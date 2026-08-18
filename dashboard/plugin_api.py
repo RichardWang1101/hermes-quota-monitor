@@ -41,25 +41,16 @@ def _get(url: str, token: str, timeout: int = 10) -> dict | None:
         return None
 
 
-def _parse_reset(resets_at: str) -> str:
+def _parse_reset(resets_at: str) -> int:
+    """Return seconds until reset, or 0 if already reset."""
     if not resets_at:
-        return "\u2014"
+        return 0
     try:
         reset_time = datetime.fromisoformat(resets_at.replace("Z", "+00:00"))
         delta = reset_time - datetime.now(timezone.utc)
-        total_s = int(delta.total_seconds())
-        if total_s <= 0:
-            return "已重置"
-        dd = total_s // 86400
-        hh = total_s % 86400 // 3600
-        mm = total_s % 3600 // 60
-        if dd > 0:
-            return f"{dd}天{hh}时"
-        if hh > 0:
-            return f"{hh}时{mm}分"
-        return f"{mm}分"
+        return max(0, int(delta.total_seconds()))
     except Exception:
-        return "\u2014"
+        return 0
 
 
 # --- Provider query functions ---
@@ -151,6 +142,8 @@ def _query_zhipu(provider: dict) -> dict:
     }
 
 
+
+
 def _query_openai_compat(provider: dict) -> dict:
     """Query OpenAI-compatible provider balance.
 
@@ -172,7 +165,6 @@ def _query_openai_compat(provider: dict) -> dict:
         if isinstance(msg, dict):
             msg = msg.get("message", str(msg))
         return {"error": str(msg)}
-    # Normalize: try common fields
     for total_key, used_key, rem_key in [
         ("total_balance", "used_balance", "available_balance"),
         ("balance", "used", "available"),
@@ -188,7 +180,6 @@ def _query_openai_compat(provider: dict) -> dict:
                 "granted": f"{total:.2f}",
                 "used": f"{used:.2f}",
             }
-    # Fallback: return raw data
     return {"currency": "?", "total": json.dumps(data, ensure_ascii=False)}
 
 

@@ -16,22 +16,32 @@ const I18N = {
     title: '\ud83d\udcca 配额监控', close: '\u2715', settings: '\u2699',
     settingsHint: '选择要显示的提供商：', noProvider: '点击 \u2699 选择要显示的提供商',
     updated: '更新', reset: '重置', total: '总余额', granted: '赠送', toppedUp: '充值',
-    recharge: '前往充值 \u2192', balance: '余额', loading: '加载中...',
+    balance: '余额', loading: '加载中...',
     cycle5h: '5小时额度', cycleWeek: '周额度', cycleMonth: '月额度',
     langSwitch: 'EN',
+    resetFmt: (s) => { if(s<=0) return '已重置'; const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); return d>0?`${d}天${h}时`:h>0?`${h}时${m}分`:`${m}分` },
+    err_requestFailed: '请求失败', err_noKey: 'API Key 未配置', err_accountUnavailable: '账户不可用',
+    err_noData: '无余额数据', err_noBaseUrl: '未配置 base_url', err_queryError: '查询异常',
   },
   en: {
     title: '\ud83d\udcca Quota Monitor', close: '\u2715', settings: '\u2699',
     settingsHint: 'Select providers to display:', noProvider: 'Click \u2699 to select providers',
     updated: 'Updated', reset: 'Reset', total: 'Total', granted: 'Granted', toppedUp: 'Top-up',
-    recharge: 'Recharge \u2192', balance: 'Balance', loading: 'Loading...',
+    balance: 'Balance', loading: 'Loading...',
     cycle5h: '5h Quota', cycleWeek: 'Weekly', cycleMonth: 'Monthly',
     langSwitch: '中文',
+    resetFmt: (s) => { if(s<=0) return 'Reset'; const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m` },
+    err_requestFailed: 'Request failed', err_noKey: 'API Key not configured', err_accountUnavailable: 'Account unavailable',
+    err_noData: 'No balance data', err_noBaseUrl: 'base_url not configured', err_queryError: 'Query error',
   },
 }
 let _lang = 'zh'
 function setLang(l) { _lang = l }
 function t(key) { return I18N[_lang]?.[key] || I18N.zh[key] || key }
+function tErr(msg) {
+  const map = { '请求失败':'err_requestFailed', 'API Key 未配置':'err_noKey', '账户不可用':'err_accountUnavailable', '无余额数据':'err_noData', '未配置 base_url':'err_noBaseUrl', '查询异常':'err_queryError' }
+  return t(map[msg] || '') || msg
+}
 
 function pctColor(p) { return p >= 80 ? '#ef4444' : p >= 50 ? '#f59e0b' : '#22c55e' }
 function fmtAmt(n, c) { const num = parseFloat(n)||0; return c==='CNY' ? `\u00a5${num.toFixed(2)}` : `$${num.toFixed(2)}` }
@@ -114,11 +124,11 @@ function CycleRow({ label, pct, reset }) {
       jsxs('span', { className:'text-xs tabular-nums font-bold', style:{color:c}, children:[pct,'%'] }),
     ] }),
     jsx(Bar, { pct, color:c }),
-    reset && jsx('div', { className:'flex justify-between', children: jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:`${t('reset')}: ${reset}` }) }),
+    reset > 0 && jsx('div', { className:'flex justify-between', children: jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:`${t('reset')}: ${t('resetFmt')(reset)}` }) }),
   ] })
 }
 function OgcCard({ data }) {
-  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
+  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:tErr(data.error) })
   return jsxs(Fragment, { children: [
     jsx(CycleRow, { label:t('cycle5h'), pct:data.rolling?.percent??0, reset:data.rolling?.reset_in }),
     jsx(CycleRow, { label:t('cycleWeek'), pct:data.weekly?.percent??0, reset:data.weekly?.reset_in }),
@@ -126,7 +136,7 @@ function OgcCard({ data }) {
   ] })
 }
 function DsCard({ data }) {
-  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
+  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:tErr(data.error) })
   return jsxs('div', { className:'flex flex-col gap-1', children: [
     jsxs('div', { className:'flex justify-between items-center', children: [
       jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:t('total') }),
@@ -140,11 +150,10 @@ function DsCard({ data }) {
       jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:t('toppedUp') }),
       jsx('span', { className:'text-[0.65rem] tabular-nums', style:{color:TEXT_DIM}, children:fmtAmt(data.topped_up, data.currency) }),
     ] }),
-    jsx('a', { href:'https://platform.deepseek.com', target:'_blank', rel:'noopener', className:'mt-1 text-center text-[0.65rem] font-medium py-1 rounded no-underline', style:{background:'rgba(77,107,254,0.15)',color:'#4D6BFE',cursor:'pointer'}, children:t('recharge') }),
   ] })
 }
 function GenericCard({ data, color }) {
-  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
+  if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:tErr(data.error) })
   if (data.total != null) return jsxs('div', { className:'flex justify-between items-center', children: [
     jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:t('balance') }),
     jsx('span', { className:'text-sm font-bold tabular-nums', style:{color}, children:fmtAmt(data.total, data.currency) }),

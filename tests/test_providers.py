@@ -104,16 +104,16 @@ class TestQueryOpenAICompat:
 
 class TestParseReset:
     def test_empty(self):
-        assert plugin_api._parse_reset("") == "\u2014"
+        assert plugin_api._parse_reset("") == 0
 
     def test_future(self):
         from datetime import datetime, timezone, timedelta
         future = (datetime.now(timezone.utc) + timedelta(hours=5)).isoformat().replace("+00:00", "Z")
         result = plugin_api._parse_reset(future)
-        assert "时" in result
+        assert result > 0
 
     def test_past(self):
         from datetime import datetime, timezone, timedelta
         past = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
         result = plugin_api._parse_reset(past)
-        assert result == "已重置"
+        assert result == 0
