@@ -1,0 +1,36 @@
+{
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "type": "deepseek",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "color": "#4D6BFE",
+      "enabled": true
+    },
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "type": "openrouter",
+      "api_key_env": "OPENROUTER_API_KEY",
+      "color": "#e879f9",
+      "enabled": true
+    },
+    {
+      "id": "zhipu",
+      "name": "智谱GLM",
+      "type": "zhipu",
+      "api_key_env": "ZHIPU_API_KEY",
+      "color": "#6366f1",
+      "enabled": true
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "type": "openai",
+      "api_key_env": "OPENAI_API_KEY",
+      "color": "#10a37f",
+      "enabled": false
+    }
+  ]
+}

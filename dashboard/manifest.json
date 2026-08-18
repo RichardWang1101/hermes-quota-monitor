@@ -1,0 +1,4 @@
+{
+  "name": "quota-monitor",
+  "api": "plugin_api.py"
+}
