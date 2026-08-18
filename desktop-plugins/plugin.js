@@ -1,6 +1,7 @@
 /**
  * Quota Monitor — shared frontend for both versions.
  * Settings: gear icon toggles provider checkboxes, persisted via ctx.storage.
+ * Language: i18n with zh/en toggle, persisted via ctx.storage.
  */
 import { cn, haptic, host, Tip } from '@hermes/plugin-sdk'
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime'
@@ -8,6 +9,29 @@ import { useEffect, useRef, useState } from 'react'
 
 const TEXT_DIM = '#6b7280'
 const DIVIDER = 'rgba(255,255,255,0.08)'
+
+/* --- i18n --- */
+const I18N = {
+  zh: {
+    title: '\ud83d\udcca 配额监控', close: '\u2715', settings: '\u2699',
+    settingsHint: '选择要显示的提供商：', noProvider: '点击 \u2699 选择要显示的提供商',
+    updated: '更新', reset: '重置', total: '总余额', granted: '赠送', toppedUp: '充值',
+    recharge: '前往充值 \u2192', balance: '余额', loading: '加载中...',
+    cycle5h: '5小时额度', cycleWeek: '周额度', cycleMonth: '月额度',
+    langSwitch: 'EN',
+  },
+  en: {
+    title: '\ud83d\udcca Quota Monitor', close: '\u2715', settings: '\u2699',
+    settingsHint: 'Select providers to display:', noProvider: 'Click \u2699 to select providers',
+    updated: 'Updated', reset: 'Reset', total: 'Total', granted: 'Granted', toppedUp: 'Top-up',
+    recharge: 'Recharge \u2192', balance: 'Balance', loading: 'Loading...',
+    cycle5h: '5h Quota', cycleWeek: 'Weekly', cycleMonth: 'Monthly',
+    langSwitch: '中文',
+  },
+}
+let _lang = 'zh'
+function setLang(l) { _lang = l }
+function t(key) { return I18N[_lang]?.[key] || I18N.zh[key] || key }
 
 function pctColor(p) { return p >= 80 ? '#ef4444' : p >= 50 ? '#f59e0b' : '#22c55e' }
 function fmtAmt(n, c) { const num = parseFloat(n)||0; return c==='CNY' ? `\u00a5${num.toFixed(2)}` : `$${num.toFixed(2)}` }
@@ -32,10 +56,19 @@ function getProviderColor(id) { return PROVIDER_meta[id]?.color || '#888' }
 /* --- Settings persistence --- */
 let _ctx
 function getEnabled() {
-  try { return _ctx?.storage?.get('enabled') || {} } catch { return {} }
+  try {
+    const lang = _ctx?.storage?.get('lang')
+    if (lang) setLang(lang)
+    return _ctx?.storage?.get('enabled') || {}
+  } catch { return {} }
 }
 function setEnabled(v) {
   try { _ctx?.storage?.set('enabled', v) } catch {}
+}
+function getLang() { return _lang }
+function saveLang(l) {
+  setLang(l)
+  try { _ctx?.storage?.set('lang', l) } catch {}
 }
 
 /* --- Data fetch --- */
@@ -81,39 +114,39 @@ function CycleRow({ label, pct, reset }) {
       jsxs('span', { className:'text-xs tabular-nums font-bold', style:{color:c}, children:[pct,'%'] }),
     ] }),
     jsx(Bar, { pct, color:c }),
-    reset && jsx('div', { className:'flex justify-between', children: jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:`重置: ${reset}` }) }),
+    reset && jsx('div', { className:'flex justify-between', children: jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:`${t('reset')}: ${reset}` }) }),
   ] })
 }
 function OgcCard({ data }) {
   if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
   return jsxs(Fragment, { children: [
-    jsx(CycleRow, { label:'5小时额度', pct:data.rolling?.percent??0, reset:data.rolling?.reset_in }),
-    jsx(CycleRow, { label:'周额度', pct:data.weekly?.percent??0, reset:data.weekly?.reset_in }),
-    jsx(CycleRow, { label:'月额度', pct:data.monthly?.percent??0, reset:data.monthly?.reset_in }),
+    jsx(CycleRow, { label:t('cycle5h'), pct:data.rolling?.percent??0, reset:data.rolling?.reset_in }),
+    jsx(CycleRow, { label:t('cycleWeek'), pct:data.weekly?.percent??0, reset:data.weekly?.reset_in }),
+    jsx(CycleRow, { label:t('cycleMonth'), pct:data.monthly?.percent??0, reset:data.monthly?.reset_in }),
   ] })
 }
 function DsCard({ data }) {
   if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
   return jsxs('div', { className:'flex flex-col gap-1', children: [
     jsxs('div', { className:'flex justify-between items-center', children: [
-      jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:'总余额' }),
+      jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:t('total') }),
       jsx('span', { className:'text-sm font-bold tabular-nums', style:{color:'#4D6BFE'}, children:fmtAmt(data.total, data.currency) }),
     ] }),
     data.granted !== '0.00' && jsxs('div', { className:'flex justify-between', children: [
-      jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:'赠送' }),
+      jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:t('granted') }),
       jsx('span', { className:'text-[0.65rem] tabular-nums', style:{color:TEXT_DIM}, children:fmtAmt(data.granted, data.currency) }),
     ] }),
     jsxs('div', { className:'flex justify-between', children: [
-      jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:'充值' }),
+      jsx('span', { className:'text-[0.65rem]', style:{color:TEXT_DIM}, children:t('toppedUp') }),
       jsx('span', { className:'text-[0.65rem] tabular-nums', style:{color:TEXT_DIM}, children:fmtAmt(data.topped_up, data.currency) }),
     ] }),
-    jsx('a', { href:'https://platform.deepseek.com', target:'_blank', rel:'noopener', className:'mt-1 text-center text-[0.65rem] font-medium py-1 rounded no-underline', style:{background:'rgba(77,107,254,0.15)',color:'#4D6BFE',cursor:'pointer'}, children:'前往充值 \u2192' }),
+    jsx('a', { href:'https://platform.deepseek.com', target:'_blank', rel:'noopener', className:'mt-1 text-center text-[0.65rem] font-medium py-1 rounded no-underline', style:{background:'rgba(77,107,254,0.15)',color:'#4D6BFE',cursor:'pointer'}, children:t('recharge') }),
   ] })
 }
 function GenericCard({ data, color }) {
   if (data.error) return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:data.error })
   if (data.total != null) return jsxs('div', { className:'flex justify-between items-center', children: [
-    jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:'余额' }),
+    jsx('span', { className:'text-xs', style:{color:'#9ca3af'}, children:t('balance') }),
     jsx('span', { className:'text-sm font-bold tabular-nums', style:{color}, children:fmtAmt(data.total, data.currency) }),
   ] })
   return jsx('span', { className:'text-xs', style:{color:TEXT_DIM}, children:JSON.stringify(data) })
@@ -167,8 +200,8 @@ function QuotaChip() {
     return { text, color }
   })
   const chipContent = isLoading
-    ? '配额监控 ...'
-    : parts.length === 0 ? '配额监控 --' : null
+    ? t('title') + ' ...'
+    : parts.length === 0 ? t('title') + ' --' : null
 
   function toggle() {
     if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect())
@@ -176,7 +209,7 @@ function QuotaChip() {
   }
 
   return jsxs('div', { className:'relative', ref, children: [
-    jsx(Tip, { label:'配额监控', children: jsx('button', {
+    jsx(Tip, { label:t('title'), children: jsx('button', {
       ref:btnRef,
       className:cn('inline-flex h-full items-center gap-1.5 px-2.5 text-xs transition-colors rounded min-w-[120px] hover:bg-(--chrome-action-hover)'),
       type:'button', style:{fontSize:'0.75rem',fontWeight:500}, onClick:toggle,
@@ -197,12 +230,18 @@ function QuotaChip() {
 function Popover({ data, allKeys, onClose, rect }) {
   const [showSettings, setShowSettings] = useState(false)
   const [enabled, setEnabledState] = useState(getEnabled())
+  const [lang, setLangState] = useState(getLang())
 
   function toggleProvider(id) {
     const next = { ...enabled, [id]: !enabled[id] }
     if (!next[id]) delete next[id]
     setEnabledState(next)
     setEnabled(next)
+  }
+  function toggleLang() {
+    const next = lang === 'zh' ? 'en' : 'zh'
+    setLangState(next)
+    saveLang(next)
   }
 
   const displayKeys = showSettings ? allKeys : allKeys.filter(k => enabled[k])
@@ -213,12 +252,14 @@ function Popover({ data, allKeys, onClose, rect }) {
     children:jsxs('div', { className:'flex flex-col gap-2', children: [
       /* Header */
       jsxs('div', { className:'flex items-center justify-between', children: [
-        jsx('span', { className:'text-sm font-bold', style:{color:'#f3f4f6'}, children:'\ud83d\udcca 配额监控' }),
+        jsx('span', { className:'text-sm font-bold', style:{color:'#f3f4f6'}, children:t('title') }),
         jsxs('div', { className:'flex items-center gap-2', children: [
+          jsx('button', { className:'text-xs hover:opacity-80 px-1.5 py-0.5 rounded', style:{color:TEXT_DIM,cursor:'pointer',border:`1px solid ${DIVIDER}`}, type:'button',
+            onClick:toggleLang, children:t('langSwitch') }),
           jsx('button', { className:'text-sm hover:opacity-80', style:{color:showSettings?'#e879f9':TEXT_DIM,cursor:'pointer'}, type:'button',
-            onClick:()=>setShowSettings(!showSettings), children:'\u2699' }),
+            onClick:()=>setShowSettings(!showSettings), children:t('settings') }),
           jsx('button', { className:'text-sm hover:opacity-80', style:{color:TEXT_DIM,cursor:'pointer'}, type:'button',
-            onClick:onClose, children:'\u2715' }),
+            onClick:onClose, children:t('close') }),
         ] }),
       ] }),
       jsx('div', { style:{borderTop:`1px solid ${DIVIDER}`} }),
@@ -226,7 +267,7 @@ function Popover({ data, allKeys, onClose, rect }) {
       /* Settings mode: checkboxes */
       showSettings
         ? jsxs('div', { className:'flex flex-col gap-1', children: [
-            jsx('span', { className:'text-[0.65rem] font-medium', style:{color:TEXT_DIM}, children:'选择要显示的提供商：' }),
+            jsx('span', { className:'text-[0.65rem] font-medium', style:{color:TEXT_DIM}, children:t('settingsHint') }),
             ...allKeys.map(k => jsxs('label', {
               className:'flex items-center gap-2 py-1 cursor-pointer',
               children: [
@@ -240,7 +281,7 @@ function Popover({ data, allKeys, onClose, rect }) {
         /* Normal mode: provider cards */
         : displayKeys.length === 0
           ? jsx('span', { className:'text-xs text-center py-2', style:{color:TEXT_DIM},
-              children:'点击 \u2699 选择要显示的提供商' })
+              children:t('noProvider') })
           : displayKeys.map(k => {
               const color = getProviderColor(k)
               const logo = LOGOS[k]
@@ -263,7 +304,7 @@ function Popover({ data, allKeys, onClose, rect }) {
 
       /* Footer */
       jsx('div', { className:'flex justify-end', children: jsx('span', { className:'text-[0.6rem]', style:{color:'#4b5563'},
-        children:data?.updated_at ? `更新: ${new Date(data.updated_at).toLocaleTimeString('zh-CN')}` : '' }) }),
+        children:data?.updated_at ? `${t('updated')}: ${new Date(data.updated_at).toLocaleTimeString(_lang === 'zh' ? 'zh-CN' : 'en-US')}` : '' }) }),
     ] }),
   })
 }
