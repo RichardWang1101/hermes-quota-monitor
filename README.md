@@ -135,7 +135,6 @@ def _query_kimi(provider: dict) -> dict:
 | 提供商 | 预警条件 | 颜色 |
 |--------|---------|------|
 | DeepSeek | 余额 ≤ ¥5 | 🔵 蓝色 |
-| OpenCode Go | 任一周期 ≥ 80% | 🔴 红色 |
 | 其他 | 自定义 | 在 `plugin.js` 中修改 `getAlertColor` |
 
 ## 隐私说明
